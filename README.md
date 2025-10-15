@@ -44,38 +44,48 @@ The project creates a complete data pipeline that transforms raw payment data th
 The following Mermaid diagram illustrates the complete data architecture and relationships across all three layers:
 
 ```mermaid
-flowchart TD
-    %% Bronze Layer
-    subgraph Bronze[Bronze Layer - Raw Data]
-        MP[raw_merchant_profiles]
-        MS[raw_merchant_subscriptions] 
-        MT[raw_merchant_transactions]
+flowchart LR
+    %% Bronze Layer (Left)
+    subgraph Bronze[" 🥉 Bronze Layer - Raw Data "]
+        direction TB
+        MP["📄 raw_merchant_profiles<br/>└ merchant profiles data"]
+        MS["📄 raw_merchant_subscriptions<br/>└ subscription plans data"] 
+        MT["📄 raw_merchant_transactions<br/>└ payment transactions data"]
     end
 
-    %% Silver Layer
-    subgraph Silver[Silver Layer - Data Vault 2.0]
-        %% Hubs
-        HM[HUB_MERCHANT]
-        HS[HUB_SUBSCRIPTION]
-        HT[HUB_TRANSACTION]
+    %% Silver Layer (Middle)
+    subgraph Silver[" 🥈 Silver Layer - Data Vault 2.0 "]
+        direction TB
+        subgraph Hubs[" 🔵 Hubs "]
+            direction TB
+            HM["🔑 HUB_MERCHANT<br/>└ merchant business keys"]
+            HS["🔑 HUB_SUBSCRIPTION<br/>└ subscription business keys"]
+            HT["🔑 HUB_TRANSACTION<br/>└ transaction business keys"]
+        end
         
-        %% Satellites
-        SMP[SAT_MERCHANT_PROFILE]
-        SSD[SAT_SUBSCRIPTION_DETAILS]
+        subgraph Satellites[" 🟣 Satellites "]
+            direction TB
+            SMP["📊 SAT_MERCHANT_PROFILE<br/>└ merchant attributes"]
+            SSD["📊 SAT_SUBSCRIPTION_DETAILS<br/>└ subscription attributes"]
+        end
         
-        %% Links
-        LMS[LNK_MERCHANT_SUBSCRIPTION]
-        LMT[LNK_MERCHANT_TRANSACTION]
+        subgraph Links[" 🟠 Links "]
+            direction TB
+            LMS["🔗 LNK_MERCHANT_SUBSCRIPTION<br/>└ merchant-subscription relationships"]
+            LMT["🔗 LNK_MERCHANT_TRANSACTION<br/>└ merchant-transaction relationships"]
+        end
     end
 
-    %% Gold Layer
-    subgraph Gold[Gold Layer - Dimensional Model]
-        DM[DIM_MERCHANT]
-        DS[DIM_SUBSCRIPTION]
-        FPR[FACT_PAYMENT_REVENUE]
+    %% Gold Layer (Right)
+    subgraph Gold[" 🥇 Gold Layer - Dimensional Model "]
+        direction TB
+        DM["📐 DIM_MERCHANT<br/>└ merchant dimension table"]
+        DS["📐 DIM_SUBSCRIPTION<br/>└ subscription dimension table"]
+        FPR["⭐ FACT_PAYMENT_REVENUE<br/>└ payment revenue fact table"]
     end
 
     %% Bronze to Silver Data Flow
+    Bronze --> Silver
     MP --> HM
     MP --> SMP
     MS --> HS
@@ -95,27 +105,29 @@ flowchart TD
     HT -.-> LMT
     
     %% Silver to Gold Flow
+    Silver --> Gold
     HM --> DM
     SMP --> DM
     HS --> DS
     SSD --> DS
     
     %% Fact Table Relationships
-    DM --> FPR
-    DS --> FPR
-    LMS -.-> FPR
-    LMT -.-> FPR
+    HT --> FPR
+    SSD --> FPR
+    LMS --> FPR
+    MT --> FPR
 
-    %% Styling
-    classDef bronzeLayer fill:#d4a574,stroke:#8b4513,stroke-width:2px,color:#000
-    classDef silverLayer fill:#c0c0c0,stroke:#696969,stroke-width:2px,color:#000
-    classDef goldLayer fill:#ffd700,stroke:#b8860b,stroke-width:2px,color:#000
-    classDef hub fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000
-    classDef satellite fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000
-    classDef link fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000
-    classDef dimension fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000
-    classDef fact fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000
+    %% Styling - Uniform box sizes and better visual hierarchy
+    classDef bronzeLayer fill:#d4a574,stroke:#8b4513,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef silverLayer fill:#c0c0c0,stroke:#696969,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef goldLayer fill:#ffd700,stroke:#b8860b,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef hub fill:#e3f2fd,stroke:#1976d2,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef satellite fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef link fill:#fff3e0,stroke:#f57c00,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef dimension fill:#e8f5e8,stroke:#388e3c,stroke-width:2px,color:#000,min-width:200px,text-align:center
+    classDef fact fill:#fff9c4,stroke:#f57f17,stroke-width:3px,color:#000,min-width:200px,text-align:center
     
+    %% Layer Classifications
     class MP,MS,MT bronzeLayer
     class HM,HS,HT hub
     class SMP,SSD satellite
@@ -141,7 +153,11 @@ flowchart TD
    - **One-to-Many**: Hub → Satellite (1 merchant has many profile changes)
    - **Many-to-Many**: Merchant ↔ Subscription (via Link table)
    - **Many-to-Many**: Merchant ↔ Transaction (via Link table)
-   - **Star Schema**: Fact table connects to Dimensions for analytics
+   - **FACT_PAYMENT_REVENUE Sources**:
+     - Raw transaction data (gross amounts, timestamps)
+     - HUB_TRANSACTION (transaction hash keys)
+     - SAT_SUBSCRIPTION_DETAILS (fee percentages for revenue calculation)
+     - LNK_MERCHANT_SUBSCRIPTION (bridges merchants to their active subscriptions)
 
 ## 🚀 Getting Started
 
